@@ -69,10 +69,9 @@ impl Sacados {
         valmax as f32
     }
     fn sol_glouton_relax(sorted : &[Objet], poids_max: u32, level : usize, mut poidsac: u32) -> f32 {
-        
         let mut valmax: u32 = 0;
         for obj in sorted[level..].iter() {
-            if poidsac > poids_max {
+            if poidsac+obj.poids > poids_max {
                 return valmax as f32 + (obj.valeur as f32 / 2.);
             }
             poidsac += obj.poids;
