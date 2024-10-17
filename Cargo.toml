@@ -1,0 +1,13 @@
+[package]
+name = "tme35"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = "0.8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip=true
+panic = 'abort'
