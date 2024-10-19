@@ -1,7 +1,8 @@
-use std::{default, fmt::{self, Display}, fs, time::Instant, vec};
+use std::{cmp::Ordering, collections::BinaryHeap, fmt::{self, Display}, fs, time::Instant, vec};
 use rand::Rng;
 use colored::Colorize;
 use std::env;
+
 #[derive(Clone, Copy)]
 enum Tinstance {
     NC,
@@ -15,6 +16,23 @@ struct Node {
     weight : u64,
     limit : f64,
 }
+impl Ord for Node {
+    fn cmp(&self, other: &Node) -> Ordering {
+        self.limit.partial_cmp(&other.limit).unwrap()
+    }
+}
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Node) -> Option<Ordering> {
+        self.limit.partial_cmp(&other.limit)
+    }
+}
+impl PartialEq for Node {
+    fn eq(&self, other: &Node) -> bool {
+        self.limit == other.limit
+    }
+}
+impl Eq for Node {}
+
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "id : {}, used : {}", self.id, self.used)
@@ -167,13 +185,14 @@ impl Sacados {
         println!("step : {}", step);
     }
     fn branch_and_bound(&mut self) {
-        let mut pile = Vec::with_capacity(self.instance.len());
+        //let mut pile = Vec::with_capacity(self.instance.len());
+        let mut pile = BinaryHeap::with_capacity(self.instance.len());
         let mut used = vec![false;self.instance.len()];
         let mut step: u64 = 0;
 
         let sorted = Sacados::sort_instances(self);
         pile.push(Node{id : 0, used : false, cost:0,weight:0, limit:0.});
-        pile.push(Node{id : 0, used : true,cost:0,weight:0, limit:0.});
+        pile.push(Node{id : 0, used : true,cost:0,weight:0, limit:1.});
         let (mut sol, mut best_score) = Sacados::sol_glouton(&sorted, self.poids_max);
     
         println!("{}", best_score.to_string().blue());
@@ -181,7 +200,7 @@ impl Sacados {
             step +=1;
             let mut poidsac = node.weight;
             let mut cost = node.cost;
-            if node.limit != 0. && node.limit < best_score as f64 {
+            if node.limit > 1. && node.limit < best_score as f64 {
                 continue;
             }
             used[node.id..].fill(false);
