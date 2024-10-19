@@ -2,6 +2,8 @@ use std::{cmp::Ordering, collections::BinaryHeap, fmt::{self, Display}, fs, time
 use rand::Rng;
 use colored::Colorize;
 use std::env;
+mod parser;
+use parser::*;
 
 #[derive(Clone, Copy)]
 enum Tinstance {
@@ -41,14 +43,16 @@ impl Display for Node {
 struct Sacados {
     instance : Vec<Objet>,
     poids_max : u64,
-    sol : Vec<bool>
+    sol : Vec<bool>,
+    optimal : Option<u64>,
+    expected : Option<u64>
 }
 #[derive(PartialEq, PartialOrd,  Clone)]
 struct Objet {
     poids : u64,
     valeur : u64,
     ratio : f64,
-    id : u64,
+    id : usize,
 }
 impl Display for Sacados {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -60,6 +64,9 @@ impl Display for Sacados {
     }
 }
 impl Sacados {
+    fn empty() -> Self {
+        Self { instance: Vec::new(), poids_max: 0, sol: Vec::new(),optimal:None, expected:None }
+    }
     fn sort_instances (&self) -> Vec<Objet> {
         let mut res=  self.instance.clone();
         res.sort_by(|x, y| y.ratio.partial_cmp(&x.ratio).unwrap());
@@ -77,6 +84,18 @@ impl Sacados {
             poidsac += obj.poids;
         }
         instances
+    }
+    fn add_item(&mut self, value : u64, weight : u64) {
+        self.instance.push(Objet { poids: weight, valeur: value, ratio: value as f64 /weight as f64, id: self.instance.len() });
+    }
+    fn set_instance_cap(&mut self, n : usize) {
+        self.instance.reserve(n);
+    }
+    fn set_max_capacity(&mut self, w : u64) {
+        self.poids_max = w;
+    }
+    fn set_expected(&mut self, z : u64) {
+        self.expected = Some(z);
     }
     fn sol_glouton(sorted : &[Objet], poids_max: u64) -> (Vec<bool>, u64) {
         let mut poidsac = 0;
@@ -109,7 +128,7 @@ impl Sacados {
         let obj3 = Objet {valeur : 8, poids : 5, ratio : 0., id:3};
         let obj4 = Objet {valeur : 10, poids : 9, ratio : 0., id:4};
         let instance = Vec::from([obj0, obj1, obj2, obj3, obj4]);
-        Self { instance , poids_max: 10, sol : Vec::new()}
+        Self { instance , poids_max: 10, sol : Vec::new(), optimal:None, expected : Some(16)}
     }
     fn gen_rand_instances(nb_inst : u64, r: u64, type_instances : Tinstance ) -> Self {
         let mut instances = Vec::with_capacity(nb_inst as usize);
@@ -132,11 +151,11 @@ impl Sacados {
                     (p,p)
                 }
             };
-            let obj = Objet {valeur : u, poids : p, ratio : u as f64 / p as f64, id};
+            let obj = Objet {valeur : u, poids : p, ratio : u as f64 / p as f64, id : id as usize};
             pmax += p;
             instances.push(obj);
         }
-        Self { instance : instances, poids_max:  pmax/2, sol : Vec::new()}
+        Self { instance : instances, poids_max:  pmax/2, sol : Vec::new(), optimal:None, expected:None}
     }
     fn arborescence(&mut self) {
         let mut pile = Vec::with_capacity(self.instance.len());
@@ -182,6 +201,7 @@ impl Sacados {
         }
         //println!("{:?}", sol);
         self.sol = sol;
+        self.optimal = Some(best_score);
         println!("step : {}", step);
     }
     fn branch_and_bound(&mut self) {
@@ -234,6 +254,7 @@ impl Sacados {
                 }
             }
         }
+        self.optimal = Some(best_score);
         let mut finalsc = 0;
         let mut finalv = vec![false;self.instance.len()];
         for (u, o) in sorted.iter().enumerate() {
@@ -307,7 +328,7 @@ fn main() {
     println!("TME35");
     //test();
     //test_one();
-    let init: u64 = 1500;
+    let init: u64 = 23;
     let t = match env::args().count() == 2 {
         true => env::args().nth(1).unwrap().parse().unwrap(),
         false => init,
@@ -318,7 +339,7 @@ fn main() {
     //let mut sac = Sacados::get_know_instance();
     //println!("{}", sac);
     let start = Instant::now();
-    /*sac.arborescence();
+    sac.arborescence();
     let arbsol = sac.sol.clone();
     sac.branch_and_bound();
     println!("same : {}", arbsol == sac.sol);
@@ -328,7 +349,17 @@ fn main() {
     match cost_same {
         true => println!("{} {} {}", compute_cost(&sac.instance, &arbsol),"vs".green(), compute_cost(&sac.instance, &sac.sol)),
         false => println!("{} {} {}", compute_cost(&sac.instance, &arbsol), "vs".red(), compute_cost(&sac.instance, &sac.sol)),
-    }*/
+    }
     sac.branch_and_bound();
     println!("{} msec", start.elapsed().as_millis());
+    
+    let mut sac = read_instance(FILE.to_string(), InstanceType::Pisinger);
+    //println!("{}", sac);
+    let start = Instant::now();
+    sac.branch_and_bound();
+    //sac.arborescence();
+    println!("{} msec", start.elapsed().as_millis());
+    println!("{}", sac.optimal.unwrap().to_string().green());
+    println!("{}", sac.expected.unwrap().to_string().green());
+    //println!("{:?}", sac.sol);
 }
