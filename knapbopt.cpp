@@ -64,8 +64,6 @@ int solution_gloutonne(int C, const vector<Objet>& objets) {
         if (poids_total + objet.poids <= C) {
             poids_total += objet.poids;
             valeur_total += objet.valeur;
-        } else {
-            break;
         }
     }
 
@@ -156,8 +154,8 @@ vector<Objet> gen_rand_instances(int nb_inst, int r, string type_instances, int&
 
 int main() {
     // Générer des instances aléatoires
-    int nb_instances = 9996;
-    int r = 100;
+    int nb_instances = 20000;
+    int r = nb_instances/2;
     string type_instances = "NC";  // Choisir entre "NC", "FC", "SS"
     int somme_poids = 0;
 

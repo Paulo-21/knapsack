@@ -1,6 +1,7 @@
-use std::{fmt::{self, Display}, fs, time::Instant, vec};
+use std::{default, fmt::{self, Display}, fs, time::Instant, vec};
 use rand::Rng;
-
+use colored::Colorize;
+use std::env;
 #[derive(Clone, Copy)]
 enum Tinstance {
     NC,
@@ -10,8 +11,9 @@ enum Tinstance {
 struct Node {
     id : usize,
     used : bool,
-    cost : u32,
-    weight : u32
+    cost : u64,
+    weight : u64,
+    limit : f64,
 }
 impl Display for Node {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,14 +22,15 @@ impl Display for Node {
 }
 struct Sacados {
     instance : Vec<Objet>,
-    poids_max : u32,
+    poids_max : u64,
     sol : Vec<bool>
 }
 #[derive(PartialEq, PartialOrd,  Clone)]
 struct Objet {
-    poids : u32,
-    valeur : u32,
-    ratio : f32,
+    poids : u64,
+    valeur : u64,
+    ratio : f64,
+    id : u64,
 }
 impl Display for Sacados {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -41,12 +44,12 @@ impl Display for Sacados {
 impl Sacados {
     fn sort_instances (&self) -> Vec<Objet> {
         let mut res=  self.instance.clone();
-        res.sort_by(|x, y| x.ratio.partial_cmp(&y.ratio).unwrap());
+        res.sort_by(|x, y| y.ratio.partial_cmp(&x.ratio).unwrap());
         res
     }
     fn glouton(&self) -> Vec<Objet> {
         let mut instances = self.sort_instances();
-        let mut poidsac: u32 = 0;
+        let mut poidsac: u64 = 0;
         //let mut res = Vec::with_capacity(instances.capacity());
         for (i, obj) in instances.iter().enumerate() {
             if poidsac <= self.poids_max {
@@ -57,46 +60,48 @@ impl Sacados {
         }
         instances
     }
-    fn sol_glouton(sorted : &[Objet], poids_max: u32) -> f32 {
+    fn sol_glouton(sorted : &[Objet], poids_max: u64) -> (Vec<bool>, u64) {
         let mut poidsac = 0;
         let mut valmax = 0;
-        for obj in sorted.iter() {
+        let mut used = vec![false;sorted.len()];
+        for (u, obj) in sorted.iter().enumerate() {
             if poidsac+obj.poids <= poids_max {
                 poidsac += obj.poids;
                 valmax += obj.valeur;
+                used[u] = true;
             }
         }
-        valmax as f32
+        (used, valmax)
     }
-    fn sol_glouton_relax(sorted : &[Objet], poids_max: u32, level : usize, mut poidsac: u32) -> f32 {
-        let mut valmax: u32 = 0;
+    fn sol_glouton_relax(sorted : &[Objet],mut valmax : u64, poidsac: u64, poids_max: u64, level : usize, ) -> f64 {
+        let mut restant = poids_max - poidsac;
         for obj in sorted[level..].iter() {
-            if poidsac+obj.poids > poids_max {
-                return valmax as f32 + (obj.valeur as f32 / 2.);
+            if obj.poids > restant {
+                return valmax as f64 + (restant as f64 * obj.ratio);
             }
-            poidsac += obj.poids;
+            restant -= obj.poids;
             valmax += obj.valeur;
         }
-        valmax as f32
+        valmax as f64
     }
     fn get_know_instance() -> Self {
-        let obj0 = Objet {valeur : 3, poids : 2, ratio : 0.};
-        let obj1 = Objet {valeur : 4, poids : 3, ratio : 0.};
-        let obj2= Objet {valeur : 8, poids : 4, ratio : 0.};
-        let obj3 = Objet {valeur : 8, poids : 5, ratio : 0.};
-        let obj4 = Objet {valeur : 10, poids : 9, ratio : 0.};
+        let obj0 = Objet {valeur : 3, poids : 2, ratio : 0., id:0};
+        let obj1 = Objet {valeur : 4, poids : 3, ratio : 0., id:1};
+        let obj2= Objet {valeur : 8, poids : 4, ratio : 0., id:2};
+        let obj3 = Objet {valeur : 8, poids : 5, ratio : 0., id:3};
+        let obj4 = Objet {valeur : 10, poids : 9, ratio : 0., id:4};
         let instance = Vec::from([obj0, obj1, obj2, obj3, obj4]);
         Self { instance , poids_max: 10, sol : Vec::new()}
     }
-    fn gen_rand_instances(nb_inst : u32, r: u32, type_instances : Tinstance ) -> Self {
+    fn gen_rand_instances(nb_inst : u64, r: u64, type_instances : Tinstance ) -> Self {
         let mut instances = Vec::with_capacity(nb_inst as usize);
         let mut rng = rand::thread_rng();
-        let mut pmax: u32 = 0;
-        for _ in 0..nb_inst {
+        let mut pmax: u64 = 0;
+        for id in 0..nb_inst {
             let (u, p) = match type_instances {
                 Tinstance::NC => {
-                    let p: u32 = rng.gen_range(1..r);
-                    let u: u32 = rng.gen_range(1..r);
+                    let p: u64 = rng.gen_range(1..r);
+                    let u: u64 = rng.gen_range(1..r);
                     (u, p)
                 },
                 Tinstance::FC => {
@@ -109,7 +114,7 @@ impl Sacados {
                     (p,p)
                 }
             };
-            let obj = Objet {valeur : u, poids : p, ratio : u as f32 / p as f32};
+            let obj = Objet {valeur : u, poids : p, ratio : u as f64 / p as f64, id};
             pmax += p;
             instances.push(obj);
         }
@@ -118,56 +123,43 @@ impl Sacados {
     fn arborescence(&mut self) {
         let mut pile = Vec::with_capacity(self.instance.len());
         let mut used = vec![false;self.instance.len()];
-        let mut sol = Vec::new();
-        let mut poidsac: u32 = 0;
-        let mut cost: u32 = 0;
+        let mut sol  = vec![false; self.instance.len()];
+        let mut poidsac: u64 = 0;
+        let mut cost: u64 = 0;
         let mut best_score = 0;
         let mut step: u64 = 0;
-        pile.push(Node{id : 0, used : false, cost :0, weight:0});
-        pile.push(Node{id : 0, used : true, cost:0, weight:0});
-        while !pile.is_empty() {
-            let mut id_taken = 0;
-            {   step +=1;
-                let node = pile.last().unwrap();
-                //println!("{}", node);
-                id_taken = node.id;
+        pile.push(Node{id : 0, used : false, cost :0, weight:0, limit:0.});
+        pile.push(Node{id : 0, used : true, cost:0, weight:0, limit:0.});
+        while let Some(node) = pile.pop() {
+            step +=1;
                 
                 if node.used {
-                    if poidsac + self.instance[node.id].poids as u32 <= self.poids_max as u32 {
-                        used[node.id] = node.used;
-                        poidsac += self.instance[node.id].poids as u32;
-                        cost += self.instance[node.id].valeur as u32;
+                    if poidsac + self.instance[node.id].poids <= self.poids_max {
+                        used[node.id] = true;
+                        poidsac += self.instance[node.id].poids ;
+                        cost += self.instance[node.id].valeur;
                         if cost > best_score {
-                            sol = used.clone();
+                            sol.copy_from_slice(&used);
                             best_score = cost;
                             //println!("{} {step}", cost);
                         }
                     }
                     else {
-                        unsafe { pile.set_len(pile.len()-1); }
+                        used[node.id] = false;
                         continue;
                     }
                 }
                 else {
                     if used[node.id] {
                         used[node.id] = false;
-                        poidsac -= self.instance[node.id].poids as u32;
-                        cost -= self.instance[node.id].valeur as u32;
+                        poidsac -= self.instance[node.id].poids;
+                        cost -= self.instance[node.id].valeur;
                     }
-                    /*println!("-----------------------------------");
-                    println!("{}", self.instance[node.id].valeur);
-                    println!("{cost} {step} {}",node.id);*/
-                    
                 }
-            }
-                //unsafe { pile.set_len(pile.len()-1);}
-                if id_taken < self.instance.len()-1 {
-                    let r = pile.len();
-                    pile[r-1] = Node{id : id_taken+1, used : false, cost:0, weight:0};
-                    pile.push(Node{id : id_taken+1, used : true,cost:0, weight:0});
-                }
-                else {
-                    unsafe { pile.set_len(pile.len()-1); }
+            
+                if node.id < self.instance.len()-1 {
+                    pile.push(Node{id : node.id+1, used : false, cost:0, weight:0, limit:0.});
+                    pile.push(Node{id : node.id+1, used : true,cost:0, weight:0, limit:0.});
                 }
         }
         //println!("{:?}", sol);
@@ -177,48 +169,63 @@ impl Sacados {
     fn branch_and_bound(&mut self) {
         let mut pile = Vec::with_capacity(self.instance.len());
         let mut used = vec![false;self.instance.len()];
-        let mut sol = Vec::with_capacity(self.instance.len());
-        unsafe { sol.set_len(self.instance.len()); }
-        
-        let mut best_score = 0;
         let mut step: u64 = 0;
-        let sorted = Sacados::sort_instances(self);
-        pile.push(Node{id : 0, used : false, cost:0,weight:0});
-        pile.push(Node{id : 0, used : true,cost:0,weight:0});
-        best_score = Sacados::sol_glouton(&sorted, self.poids_max) as u32;
 
-        while !pile.is_empty() {
+        let sorted = Sacados::sort_instances(self);
+        pile.push(Node{id : 0, used : false, cost:0,weight:0, limit:0.});
+        pile.push(Node{id : 0, used : true,cost:0,weight:0, limit:0.});
+        let (mut sol, mut best_score) = Sacados::sol_glouton(&sorted, self.poids_max);
+    
+        println!("{}", best_score.to_string().blue());
+        while let Some(node) = pile.pop() {
             step +=1;
-            let node = pile.pop().unwrap();
             let mut poidsac = node.weight;
             let mut cost = node.cost;
-            used[node.id] = node.used;
+            if node.limit != 0. && node.limit < best_score as f64 {
+                continue;
+            }
+            used[node.id..].fill(false);
             if node.used {
                 if poidsac + sorted[node.id].poids <= self.poids_max {
                     used[node.id] = true;
                     poidsac += sorted[node.id].poids;
                     cost += sorted[node.id].valeur;
                     if cost > best_score {
-                        sol.copy_from_slice(&used);
                         best_score = cost;
+                        sol.copy_from_slice(&used);
                     }
                 }
-                else { continue; }
+                else {
+                    used[node.id] = false;
+                    continue;
+                }
+            }
+            else {
+                used[node.id] = false;
             }
             if node.id < sorted.len()-1 {
-                let limite = Sacados::sol_glouton_relax(&sorted, self.poids_max, node.id+2, poidsac);
-                let limite2 = Sacados::sol_glouton_relax(&sorted, self.poids_max, node.id+1, poidsac);
-                if limite as f32 > best_score as f32 {
-                    pile.push(Node{id : node.id+1, used : false, cost, weight:poidsac});
+                let limite  = Sacados::sol_glouton_relax(&sorted,cost, poidsac, self.poids_max, node.id+2);
+                let limite2 = Sacados::sol_glouton_relax(&sorted,cost,  poidsac, self.poids_max, node.id+1);
+                //println!("lim : {} {}",limite,  limite2);
+                if limite > best_score as f64 {
+                    pile.push(Node{id : node.id+1, used : false, cost, weight:poidsac, limit:limite});
                 }
-                if limite2 as f32 > best_score as f32 {
-                    pile.push(Node{id : node.id+1, used : true,cost, weight:poidsac});
+                if limite2 > best_score as f64 {
+                    pile.push(Node{id : node.id+1, used : true, cost, weight:poidsac, limit:limite2});
                 }
             }
         }
-        //println!("{:?}", sol);
-        self.sol = sol;
-        println!("{best_score}");
+        let mut finalsc = 0;
+        let mut finalv = vec![false;self.instance.len()];
+        for (u, o) in sorted.iter().enumerate() {
+            finalv[o.id as usize] = sol[u];
+            if sol[u] {
+                finalsc += o.valeur;
+            }
+        }
+        self.sol = finalv;
+        println!("best score : {best_score}");
+        println!("{}", finalsc.to_string().yellow());
         println!("step : {}", step);
     }
 }
@@ -233,7 +240,7 @@ fn test() {
     for r in paramr {
         let mut towrite = towrite_org.clone();
         for i in 1..=10 {
-            let tf = (tmax as f32 * i as f32 / 10.) as u32;
+            let tf = (tmax as f64 * i as f64 / 10.) as u64;
             println!("Taille d'instance : {}", tf);
             let mut sac = Sacados::gen_rand_instances(tf, r, t);
             println!("GEN DONE");
@@ -268,18 +275,41 @@ fn test_one() {
         println!("r : {r} / {} msec ", time);
     }
 }
-
+fn compute_cost(sol : &[Objet], used : &[bool]) -> u64 {
+    let mut res = 0;
+    for (u, o) in sol.iter().enumerate() {
+        if used[u] {
+            res += o.valeur;
+        }
+    }
+    res
+}
 fn main() {
     println!("TME35");
     //test();
     //test_one();
-    let t = 1700;
+    let init: u64 = 1500;
+    let t = match env::args().count() == 2 {
+        true => env::args().nth(1).unwrap().parse().unwrap(),
+        false => init,
+    };
+    println!("{t} objects");
+    //println!("Tot node : {}", 2u64.pow(t+1) -1);
     let mut sac = Sacados::gen_rand_instances(t, t/2, Tinstance::NC);
     //let mut sac = Sacados::get_know_instance();
-    println!("{}", sac);
+    //println!("{}", sac);
     let start = Instant::now();
-    //sac.arborescence();
+    /*sac.arborescence();
+    let arbsol = sac.sol.clone();
+    sac.branch_and_bound();
+    println!("same : {}", arbsol == sac.sol);
+    println!("arb {:?}", arbsol);
+    println!("bb  {:?}", sac.sol);
+    let cost_same = compute_cost(&sac.instance, &arbsol) == compute_cost(&sac.instance, &sac.sol);
+    match cost_same {
+        true => println!("{} {} {}", compute_cost(&sac.instance, &arbsol),"vs".green(), compute_cost(&sac.instance, &sac.sol)),
+        false => println!("{} {} {}", compute_cost(&sac.instance, &arbsol), "vs".red(), compute_cost(&sac.instance, &sac.sol)),
+    }*/
     sac.branch_and_bound();
     println!("{} msec", start.elapsed().as_millis());
-    println!("{:?}", sac.sol);
 }
