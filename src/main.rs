@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, collections::BinaryHeap, fmt::{self, Display}, fs, time::Instant, vec};
 use rand::Rng;
-use colored::Colorize;
+//use colored::Colorize;
+use owo_colors::OwoColorize;
 use std::env;
 mod parser;
 use parser::*;
