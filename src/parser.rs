@@ -5,7 +5,7 @@ pub enum InstanceType {
     Jooken, Pisinger,Standard
 }
 //pub const FILE : &str = "C:/Users/paulc/Desktop/knapsack/largecoeff/knapPI_1_50_1000000/knapPI_1_50_1000000_1.csv";
-pub const FILE : &str = "../../knapsack/largecoeff/knapPI_2_10000_10000000/knapPI_2_10000_10000000_50.csv";
+pub const FILE : &str = "../../knapsack/largecoeff/knapPI_2_10000_10000000/knapPI_2_10000_10000000_49.csv";
 pub fn read_instance (file_path : String, format : InstanceType) -> Sacados {
     match format {
         InstanceType::Standard=> read_standard(file_path),

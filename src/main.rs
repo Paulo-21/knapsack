@@ -183,7 +183,7 @@ impl Sacados {
                     }
                     else {
                         used[node.id] = false;
-                        continue;
+                        //continue;
                     }
                 }
                 else {
@@ -205,8 +205,8 @@ impl Sacados {
         println!("step : {}", step);
     }
     fn branch_and_bound(&mut self) {
-        //let mut pile = Vec::with_capacity(self.instance.len());
-        let mut pile = BinaryHeap::with_capacity(self.instance.len());
+        let mut pile = Vec::with_capacity(self.instance.len());
+        //let mut pile = BinaryHeap::with_capacity(self.instance.len());
         let mut used = vec![false;self.instance.len()];
         let mut step: u64 = 0;
 
@@ -214,7 +214,8 @@ impl Sacados {
         pile.push(Node{id : 0, used : false, cost:0,weight:0, limit:0.});
         pile.push(Node{id : 0, used : true,cost:0,weight:0, limit:1.});
         let (mut sol, mut best_score) = Sacados::sol_glouton(&sorted, self.poids_max);
-    
+        //let mut best_score = scoreglouton;
+        //let mut sol = vec![false; self.instance.len()];
         println!("{}", best_score.to_string().blue());
         while let Some(node) = pile.pop() {
             step +=1;
@@ -232,6 +233,14 @@ impl Sacados {
                     if cost > best_score {
                         best_score = cost;
                         sol.copy_from_slice(&used);
+                        /*let mut finalsc = 0;
+                        for (u, o) in sorted.iter().enumerate() {
+                            if sol[u] {
+                                println!("{} {} {}",o.id, o.valeur, finalsc);
+                                finalsc += o.valeur;
+                            }
+                        }
+                        println!("B {} {}", finalsc.to_string().yellow(), best_score);*/
                     }
                 }
                 else {
@@ -254,6 +263,7 @@ impl Sacados {
                 }
             }
         }
+        
         self.optimal = Some(best_score);
         let mut finalsc = 0;
         let mut finalv = vec![false;self.instance.len()];
@@ -328,7 +338,7 @@ fn main() {
     println!("TME35");
     //test();
     //test_one();
-    let init: u64 = 23;
+    let init: u64 = 20;
     let t = match env::args().count() == 2 {
         true => env::args().nth(1).unwrap().parse().unwrap(),
         false => init,
@@ -350,9 +360,8 @@ fn main() {
         true => println!("{} {} {}", compute_cost(&sac.instance, &arbsol),"vs".green(), compute_cost(&sac.instance, &sac.sol)),
         false => println!("{} {} {}", compute_cost(&sac.instance, &arbsol), "vs".red(), compute_cost(&sac.instance, &sac.sol)),
     }
-    sac.branch_and_bound();
     println!("{} msec", start.elapsed().as_millis());
-    
+    /*
     let mut sac = read_instance(FILE.to_string(), InstanceType::Pisinger);
     //println!("{}", sac);
     let start = Instant::now();
@@ -360,6 +369,6 @@ fn main() {
     //sac.arborescence();
     println!("{} msec", start.elapsed().as_millis());
     println!("{}", sac.optimal.unwrap().to_string().green());
-    println!("{}", sac.expected.unwrap().to_string().green());
+    println!("{}", sac.expected.unwrap().to_string().green());*/
     //println!("{:?}", sac.sol);
 }
