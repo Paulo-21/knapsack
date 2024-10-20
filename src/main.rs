@@ -218,8 +218,6 @@ impl Sacados {
         pile.push(Node{id : 0, used : false, cost:0,weight:0, limit:0.});
         pile.push(Node{id : 0, used : true,cost:0,weight:0, limit:1.});
         let (mut sol, mut best_score) = Sacados::sol_glouton(&sorted, self.poids_max);
-        //let mut best_score = scoreglouton;
-        //let mut sol = vec![false; self.instance.len()];
         println!("{}", best_score.to_string().blue());
         while let Some(node) = pile.pop() {
             step +=1;
@@ -237,14 +235,6 @@ impl Sacados {
                     if cost > best_score {
                         best_score = cost;
                         sol.copy_from_slice(&used);
-                        /*let mut finalsc = 0;
-                        for (u, o) in sorted.iter().enumerate() {
-                            if sol[u] {
-                                println!("{} {} {}",o.id, o.valeur, finalsc);
-                                finalsc += o.valeur;
-                            }
-                        }
-                        println!("B {} {}", finalsc.to_string().yellow(), best_score);*/
                     }
                 }
                 else {
@@ -258,7 +248,6 @@ impl Sacados {
             if node.id < sorted.len()-1 {
                 let limite  = Sacados::sol_glouton_relax(&sorted,cost, poidsac, self.poids_max, node.id+2);
                 let limite2 = Sacados::sol_glouton_relax(&sorted,cost,  poidsac, self.poids_max, node.id+1);
-                //println!("lim : {} {}",limite,  limite2);
                 if limite > best_score as f64 {
                     pile.push(Node{id : node.id+1, used : false, cost, weight:poidsac, limit:limite});
                 }
