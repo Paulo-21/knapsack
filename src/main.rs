@@ -48,7 +48,7 @@ struct Sacados {
     optimal : Option<u64>,
     expected : Option<u64>
 }
-#[derive(PartialEq, PartialOrd,  Clone)]
+#[derive(PartialEq, PartialOrd, Clone)]
 struct Objet {
     poids : u64,
     valeur : u64,
@@ -69,21 +69,24 @@ impl Sacados {
         Self { instance: Vec::new(), poids_max: 0, sol: Vec::new(),optimal:None, expected:None }
     }
     fn sort_instances (&self) -> Vec<Objet> {
-        let mut res=  self.instance.clone();
-        res.sort_by(|x, y| y.ratio.partial_cmp(&x.ratio).unwrap());
+        let mut res =  self.instance.clone();
+        res.sort_unstable_by(|x, y| y.ratio.partial_cmp(&x.ratio).unwrap());
+        //res.sort_by(|x, y| y.ratio.partial_cmp(&x.ratio).unwrap());
         res
     }
-    fn glouton(&self) -> Vec<Objet> {
+    fn glouton(&mut self) -> Vec<Objet> {
         let mut instances = self.sort_instances();
         let mut poidsac: u64 = 0;
-        //let mut res = Vec::with_capacity(instances.capacity());
+        let mut value = 0;
         for (i, obj) in instances.iter().enumerate() {
-            if poidsac <= self.poids_max {
+            if poidsac > self.poids_max {
                 instances.truncate(i);
                 break;
             }
             poidsac += obj.poids;
+            value += obj.valeur;
         }
+        self.optimal = Some(value);
         instances
     }
     fn add_item(&mut self, value : u64, weight : u64) {
@@ -318,7 +321,7 @@ fn test_one() {
     println!("Taille instance  : {tf}");
     let t = Tinstance::NC;
     for r in paramr {
-        let sac = Sacados::gen_rand_instances(tf, r, t);
+        let mut sac = Sacados::gen_rand_instances(tf, r, t);
         println!("GEN DONE");
         let start = Instant::now();
         sac.glouton();
@@ -339,20 +342,23 @@ fn main() {
     println!("TME35");
     //test();
     //test_one();
-    let init: u64 = 20;
+    let init: u64 = 23;
     let t = match env::args().count() == 2 {
         true => env::args().nth(1).unwrap().parse().unwrap(),
         false => init,
     };
+
     println!("{t} objects");
     //println!("Tot node : {}", 2u64.pow(t+1) -1);
     let mut sac = Sacados::gen_rand_instances(t, t/2, Tinstance::NC);
     //let mut sac = Sacados::get_know_instance();
     //println!("{}", sac);
     let start = Instant::now();
+    //sac.glouton();
     sac.arborescence();
     let arbsol = sac.sol.clone();
     sac.branch_and_bound();
+    let finish = start.elapsed().as_millis();
     println!("same : {}", arbsol == sac.sol);
     println!("arb {:?}", arbsol);
     println!("bb  {:?}", sac.sol);
@@ -361,15 +367,11 @@ fn main() {
         true => println!("{} {} {}", compute_cost(&sac.instance, &arbsol),"vs".green(), compute_cost(&sac.instance, &sac.sol)),
         false => println!("{} {} {}", compute_cost(&sac.instance, &arbsol), "vs".red(), compute_cost(&sac.instance, &sac.sol)),
     }
-    println!("{} msec", start.elapsed().as_millis());
-    /*
-    let mut sac = read_instance(FILE.to_string(), InstanceType::Pisinger);
+    println!("{} msec", finish);
+    
+    //let mut sac = read_instance(FILE.to_string(), InstanceType::Pisinger);
     //println!("{}", sac);
-    let start = Instant::now();
-    sac.branch_and_bound();
-    //sac.arborescence();
-    println!("{} msec", start.elapsed().as_millis());
-    println!("{}", sac.optimal.unwrap().to_string().green());
+    /*println!("{}", sac.optimal.unwrap().to_string().green());
     println!("{}", sac.expected.unwrap().to_string().green());*/
     //println!("{:?}", sac.sol);
 }
