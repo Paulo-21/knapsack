@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::BinaryHeap, fmt::{self, Display}, fs, time::Instant, vec};
 use rand::Rng;
-//use colored::Colorize;
+
 use owo_colors::OwoColorize;
 use std::env;
 mod parser;
@@ -187,7 +187,7 @@ impl Sacados {
                     }
                     else {
                         used[node.id] = false;
-                        //continue;
+                        continue;
                     }
                 }
                 else {
@@ -343,7 +343,7 @@ fn main() {
     //let mut sac = Sacados::get_know_instance();
     //println!("{}", sac);
     let start = Instant::now();
-    //sac.glouton();
+    // sac.glouton();
     sac.arborescence();
     let arbsol = sac.sol.clone();
     sac.branch_and_bound();
