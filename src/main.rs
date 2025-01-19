@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::BinaryHeap, fmt::{self, Display}, fs, time::Instant, vec};
+use std::{cmp::Ordering, fmt::{self, Display}, fs, time::Instant, vec};
 use rand::Rng;
 
 use owo_colors::OwoColorize;
@@ -261,7 +261,7 @@ impl Sacados {
         let mut finalsc = 0;
         let mut finalv = vec![false;self.instance.len()];
         for (u, o) in sorted.iter().enumerate() {
-            finalv[o.id as usize] = sol[u];
+            finalv[o.id] = sol[u];
             if sol[u] {
                 finalsc += o.valeur;
             }
@@ -344,18 +344,18 @@ fn main() {
     //println!("{}", sac);
     let start = Instant::now();
     // sac.glouton();
-    sac.arborescence();
+//    sac.arborescence();
     let arbsol = sac.sol.clone();
     sac.branch_and_bound();
     let finish = start.elapsed().as_millis();
-    println!("same : {}", arbsol == sac.sol);
+/*    println!("same : {}", arbsol == sac.sol);
     println!("arb {:?}", arbsol);
     println!("bb  {:?}", sac.sol);
     let cost_same = compute_cost(&sac.instance, &arbsol) == compute_cost(&sac.instance, &sac.sol);
     match cost_same {
         true => println!("{} {} {}", compute_cost(&sac.instance, &arbsol),"vs".green(), compute_cost(&sac.instance, &sac.sol)),
         false => println!("{} {} {}", compute_cost(&sac.instance, &arbsol), "vs".red(), compute_cost(&sac.instance, &sac.sol)),
-    }
+    }*/
     println!("{} msec", finish);
     
     //let mut sac = read_instance(FILE.to_string(), InstanceType::Pisinger);

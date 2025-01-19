@@ -37,7 +37,7 @@ fn read_jooken(file_path : String) -> Sacados {
     let mut first_line = file.next().unwrap().split_ascii_whitespace();
     let n = first_line.next().unwrap().parse().unwrap();
     sac.set_instance_cap(n);
-    for (u, line) in file.into_iter().enumerate() {
+    for (u, line) in file.enumerate() {
         if u >= n {
             let w = line.parse().unwrap();
             sac.set_max_capacity(w);
@@ -56,16 +56,16 @@ fn read_pisinger(file_path : String) -> Sacados {
     let mut file = filestring.lines();
     let first_line = file.nth(1).unwrap();
     let n = first_line.split_ascii_whitespace().nth(1).unwrap().parse().unwrap();
-    let first_line = file.nth(0).unwrap();
+    let first_line = file.next().unwrap();
     let c = first_line.split_ascii_whitespace().nth(1).unwrap().parse().unwrap();
-    let first_line = file.nth(0).unwrap();
+    let first_line = file.next().unwrap();
     let z : u64 = first_line.split_ascii_whitespace().nth(1).unwrap().parse().unwrap();
     sac.set_instance_cap(n);
     sac.set_max_capacity(c);
     sac.set_expected(z);
     file.next().unwrap();
     println!("{} {}", n, c);
-    for (u, line) in file.into_iter().enumerate() {
+    for (u, line) in file.enumerate() {
         if u >= n {
             let w = line.parse().unwrap();
             sac.set_max_capacity(w);
